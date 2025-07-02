@@ -4,23 +4,24 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 import jwt
 
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-
 origins = [
-    "https://bi-dashboard-frontend-6c4eeitul-venkatavvari3s-projects.vercel.app",  # <- your new frontend URL
-    "https://bi-dashboard-frontend.vercel.app", 
-    "https://bi-dashboard-frontend-git-main-venkatavvari3s-projects.vercel.app"                                   # any other frontend URLs you use
-    "http://localhost:3000",                                                       # for local development (optional)
+    "https://bi-dashboard-frontend-git-main-venkatavvari3s-projects.vercel.app",
+    "https://bi-dashboard-frontend.vercel.app",
+    "https://bi-dashboard-frontend-60jd5b03f-venkatavvari3s-projects.vercel.app",
+    "https://bi-dashboard-frontend-venkatavvari3s-projects.vercel.app",
+    "http://localhost:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,            # Or use ["*"] for all (not recommended for production)
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,7 +58,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 @app.get("/api/data")
 def get_data(db=Depends(get_db)):
     cur = db.cursor()
-    # Example: Aggregate sales by product and date (customize as needed)
     query = """
         SELECT
             d.date,
@@ -82,9 +82,10 @@ def get_data(db=Depends(get_db)):
     columns = [desc[0] for desc in cur.description]
     data = [dict(zip(columns, row)) for row in rows]
     cur.close()
-    return JSONResponse(content=data)
+    # Use jsonable_encoder to handle date serialization
+    json_compatible_data = jsonable_encoder(data)
+    return JSONResponse(content=json_compatible_data)
 
-# Optional: Endpoint for dimension table lists (e.g., for filters)
 @app.get("/api/products")
 def get_products(db=Depends(get_db)):
     cur = db.cursor()
@@ -93,7 +94,8 @@ def get_products(db=Depends(get_db)):
     columns = [desc[0] for desc in cur.description]
     data = [dict(zip(columns, row)) for row in rows]
     cur.close()
-    return JSONResponse(content=data)
+    json_compatible_data = jsonable_encoder(data)
+    return JSONResponse(content=json_compatible_data)
 
 @app.get("/api/stores")
 def get_stores(db=Depends(get_db)):
@@ -103,4 +105,5 @@ def get_stores(db=Depends(get_db)):
     columns = [desc[0] for desc in cur.description]
     data = [dict(zip(columns, row)) for row in rows]
     cur.close()
-    return JSONResponse(content=data)
+    json_compatible_data = jsonable_encoder(data)
+    return JSONResponse(content=json_compatible_data)

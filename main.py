@@ -12,13 +12,15 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 origins = [
-    "https://bi-dashboard-frontend.vercel.app",  # your Vercel frontend
-    "http://localhost:3000"                       # for local dev, optional
+    "https://bi-dashboard-frontend-6c4eeitul-venkatavvari3s-projects.vercel.app",  # <- your new frontend URL
+    "https://bi-dashboard-frontend.vercel.app", 
+    "https://bi-dashboard-frontend-git-main-venkatavvari3s-projects.vercel.app"                                   # any other frontend URLs you use
+    "http://localhost:3000",                                                       # for local development (optional)
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,            # or ["*"] for all origins (not recommended for prod)
+    allow_origins=origins,            # Or use ["*"] for all (not recommended for production)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -10,9 +10,15 @@ import jwt
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+
+origins = [
+    "https://bi-dashboard-frontend.vercel.app",  # your Vercel frontend
+    "http://localhost:3000"                       # for local dev, optional
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict in production!
+    allow_origins=origins,            # or ["*"] for all origins (not recommended for prod)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

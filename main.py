@@ -55,7 +55,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 @app.get("/api/data")
-def get_data(user: str = Depends(get_current_user), db=Depends(get_db)):
+def get_data(db=Depends(get_db)):
     cur = db.cursor()
     # Example: Aggregate sales by product and date (customize as needed)
     query = """

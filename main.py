@@ -8,7 +8,6 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 import jwt
 from typing import Optional
-import os
 import smtplib
 from email.mime.text import MIMEText
 from pydantic import BaseModel
@@ -17,25 +16,16 @@ from email.mime.base import MIMEBase
 from email import encoders
 import base64
 import re
-
-# For Google token verification
 import requests
 
 app = FastAPI()
 
-PERSONA_USERS = {
-    "srini": "Srini",
-    "venkat": "Venkat",
-    "admin": "Admin",
-}
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 origins = [
     "https://bi-dashboard-frontend-git-main-venkatavvari3s-projects.vercel.app",
     "https://bi-dashboard-frontend.vercel.app",
-    "https://bi-dashboard-frontend-k2e5orlx3-venkatavvari3s-projects.vercel.app/",
-    "https://bi-dashboard-frontend-venkatavvari3s-projects.vercel.app",
-    "http://localhost:3000",
+    "https://bi-dashboard-frontend-venkatavvari3s-projects.vercel.app"
 ]
 
 app.add_middleware(
@@ -48,9 +38,25 @@ app.add_middleware(
 
 SECRET = os.getenv("SECRET", "CHANGE_ME")
 DATABASE_URL = os.getenv("DATABASE_URL")
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")  # Set this in your Render env variables
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")  # sender email
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")  # sender app password
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
+def get_db():
+    conn = psycopg2.connect(DATABASE_URL)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+def get_persona_for_username(username: str, db_conn) -> Optional[str]:
+    cur = db_conn.cursor()
+    cur.execute("SELECT persona FROM persona_users WHERE username = %s", (username.lower(),))
+    row = cur.fetchone()
+    cur.close()
+    if row:
+        return row[0]
+    return None
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
@@ -69,18 +75,13 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
     if not recipient_email or "@" not in recipient_email:
         raise HTTPException(status_code=400, detail="User email not available.")
 
-    # Create a multipart message
     msg = MIMEMultipart()
     msg["Subject"] = "Message from BI Dashboard"
     msg["From"] = EMAIL_ADDRESS
     msg["To"] = recipient_email
-
-    # Attach the text message
     msg.attach(MIMEText(request.message, "plain"))
 
-    # If there's an image, attach it
     if request.image:
-        # Parse out the image type and base64 data
         match = re.match(r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", request.image)
         if match:
             ext = match.group("ext")
@@ -107,24 +108,12 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
 class User(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
-    credential: Optional[str] = None  # For Google OAuth
-
-def get_db():
-    conn = psycopg2.connect(DATABASE_URL)
-    try:
-        yield conn
-    finally:
-        conn.close()
+    credential: Optional[str] = None
 
 def verify_google_token(token: str) -> Optional[str]:
-    """
-    Verifies the Google ID token and returns the email if valid.
-    """
     try:
-        # Google's tokeninfo endpoint (alternative to using google-auth library)
         response = requests.get("https://oauth2.googleapis.com/tokeninfo", params={"id_token": token})
         data = response.json()
-        # Check audience and other claims
         if response.status_code == 200 and data.get("aud") == GOOGLE_CLIENT_ID:
             return data.get("email")
     except Exception:
@@ -132,25 +121,22 @@ def verify_google_token(token: str) -> Optional[str]:
     return None
 
 @app.post("/api/login")
-async def login(user: User):
+async def login(user: User, db=Depends(get_db)):
     # 1. Traditional username/password login
     if user.username and user.password:
-        persona = PERSONA_USERS.get(user.username.lower())
+        persona = get_persona_for_username(user.username, db)
         if persona and user.password == "password":
-            # Add persona to JWT payload
             token = jwt.encode({"sub": user.username, "persona": persona}, SECRET, algorithm="HS256")
             return {"access_token": token}
         raise HTTPException(status_code=401, detail="Auth failed")
-    # 2. Google OAuth credential login (optional: assign persona by email)
+    # 2. Google OAuth credential login
     if user.credential:
         user_email = verify_google_token(user.credential)
         if not user_email:
             raise HTTPException(status_code=401, detail="Invalid Google token")
         persona = None
-        if "srini" in user_email.lower():
-            persona = "Srini"
-        elif "venkat" in user_email.lower():
-            persona = "Venkat"
+        # Optionally map persona for Google users (by prefix, domain, etc.)
+        persona = get_persona_for_username(user_email.split('@')[0], db)
         token = jwt.encode({"sub": user_email, "persona": persona}, SECRET, algorithm="HS256")
         return {"access_token": token}
     raise HTTPException(status_code=400, detail="Missing login payload")

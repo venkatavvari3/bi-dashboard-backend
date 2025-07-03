@@ -8,6 +8,10 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 import jwt
 from typing import Optional
+import os
+import smtplib
+from email.mime.text import MIMEText
+from pydantic import BaseModel
 
 # For Google token verification
 import requests
@@ -40,6 +44,22 @@ app.add_middleware(
 SECRET = os.getenv("SECRET", "CHANGE_ME")
 DATABASE_URL = os.getenv("DATABASE_URL")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")  # Set this in your Render env variables
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")  # sender email
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")  # sender app password
+
+class EmailRequest(BaseModel):
+    message: str
+
+@app.post("/api/email_me")
+def email_me(request: EmailRequest, user=Depends(get_current_user)):
+    recipient_email = user.get("sub")
+    if not recipient_email or "@" not in recipient_email:
+        raise HTTPException(status_code=400, detail="User email not available.")
+
+    msg = MIMEText(request.message)
+    msg["Subject"] = "Message from BI Dashboard"
+    msg["From"] = EMAIL_ADDRESS
+    msg["To"] = recipient_email
 
 class User(BaseModel):
     username: Optional[str] = None

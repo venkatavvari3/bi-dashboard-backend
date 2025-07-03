@@ -47,6 +47,13 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")  # Set this in your Render env 
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")  # sender email
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")  # sender app password
 
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+        return payload
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
 class EmailRequest(BaseModel):
     message: str
 
@@ -111,13 +118,6 @@ async def login(user: User):
         token = jwt.encode({"sub": user_email, "persona": persona}, SECRET, algorithm="HS256")
         return {"access_token": token}
     raise HTTPException(status_code=400, detail="Missing login payload")
-
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET, algorithms=["HS256"])
-        return payload
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
 @app.get("/api/data")
 def get_data(user=Depends(get_current_user), db=Depends(get_db)):

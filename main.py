@@ -1,6 +1,6 @@
 import os
 import psycopg2
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
@@ -8,6 +8,9 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 import jwt
 from typing import Optional
+from some_auth_module import get_current_user  # your JWT auth dependency
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+import base64
 
 # For Google token verification
 import requests
@@ -41,6 +44,26 @@ SECRET = os.getenv("SECRET", "CHANGE_ME")
 DATABASE_URL = os.getenv("DATABASE_URL")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")  # Set this in your Render env variables
 
+class EmailMePayload(BaseModel):
+    image: str  # data URL
+
+@router.post("/api/email_me")
+async def email_me(payload: EmailMePayload, user=Depends(get_current_user)):
+    # Extract base64 content
+    header, encoded = payload.image.split(",", 1)
+    img_bytes = base64.b64decode(encoded)
+    # Save or attach img_bytes as needed
+
+    message = MessageSchema(
+        subject="Your BI Dashboard",
+        recipients=[user.email],  # must be extracted from JWT/user
+        body="Your dashboard is attached.",
+        attachments=[("dashboard.png", "image/png", img_bytes)]
+    )
+    fm = FastMail(conf)  # configure SMTP
+    await fm.send_message(message)
+    return {"status": "ok"}
+    
 class User(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None

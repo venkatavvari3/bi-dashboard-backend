@@ -12,6 +12,11 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from pydantic import BaseModel
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+import base64
+import re
 
 # For Google token verification
 import requests
@@ -64,10 +69,30 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
     if not recipient_email or "@" not in recipient_email:
         raise HTTPException(status_code=400, detail="User email not available.")
 
-    msg = MIMEText(request.message)
+    # Create a multipart message
+    msg = MIMEMultipart()
     msg["Subject"] = "Message from BI Dashboard"
     msg["From"] = EMAIL_ADDRESS
     msg["To"] = recipient_email
+
+    # Attach the text message
+    msg.attach(MIMEText(request.message, "plain"))
+
+    # If there's an image, attach it
+    if request.image:
+        # Parse out the image type and base64 data
+        match = re.match(r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", request.image)
+        if match:
+            ext = match.group("ext")
+            data = match.group("data")
+            image_data = base64.b64decode(data)
+            part = MIMEBase("image", ext)
+            part.set_payload(image_data)
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", f'attachment; filename="image.{ext}"')
+            msg.attach(part)
+        else:
+            print("Image field is not a valid data URL")
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:

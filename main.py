@@ -17,6 +17,7 @@ app = FastAPI()
 PERSONA_USERS = {
     "srini": "Srini",
     "venkat": "Venkat",
+    "admin": "Admin",
 }
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 

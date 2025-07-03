@@ -69,6 +69,16 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
     msg["From"] = EMAIL_ADDRESS
     msg["To"] = recipient_email
 
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+            smtp.sendmail(EMAIL_ADDRESS, [recipient_email], msg.as_string())
+    except Exception as e:
+        print(f"Email sending failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to send email.")
+
+    return {"success": True, "message": "Email sent successfully"}
+
 class User(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None

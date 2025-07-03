@@ -13,6 +13,11 @@ from typing import Optional
 import requests
 
 app = FastAPI()
+
+PERSONA_USERS = {
+    "srini": "Srini",
+    "venkat": "Venkat",
+}
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 origins = [
@@ -66,36 +71,49 @@ def verify_google_token(token: str) -> Optional[str]:
 async def login(user: User):
     # 1. Traditional username/password login
     if user.username and user.password:
-        if user.username == "admin" and user.password == "password":
-            token = jwt.encode({"sub": user.username}, SECRET, algorithm="HS256")
+        persona = PERSONA_USERS.get(user.username.lower())
+        if persona and user.password == "password":
+            # Add persona to JWT payload
+            token = jwt.encode({"sub": user.username, "persona": persona}, SECRET, algorithm="HS256")
             return {"access_token": token}
         raise HTTPException(status_code=401, detail="Auth failed")
-    # 2. Google OAuth credential login
+    # 2. Google OAuth credential login (optional: assign persona by email)
     if user.credential:
         user_email = verify_google_token(user.credential)
         if not user_email:
             raise HTTPException(status_code=401, detail="Invalid Google token")
-        # You can add DB user creation/check here if you want
-        token = jwt.encode({"sub": user_email}, SECRET, algorithm="HS256")
+        persona = None
+        if "srini" in user_email.lower():
+            persona = "Srini"
+        elif "venkat" in user_email.lower():
+            persona = "Venkat"
+        token = jwt.encode({"sub": user_email, "persona": persona}, SECRET, algorithm="HS256")
         return {"access_token": token}
     raise HTTPException(status_code=400, detail="Missing login payload")
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET, algorithms=["HS256"])
-        return payload.get("sub")
+        return payload
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 @app.get("/api/data")
-def get_data(db=Depends(get_db)):
+def get_data(user=Depends(get_current_user), db=Depends(get_db)):
+    persona = user.get("persona")
     cur = db.cursor()
-    query = """
+    persona_filter = ""
+    if persona == "Srini":
+        persona_filter = "WHERE s.city = 'New York'"
+    elif persona == "Venkat":
+        persona_filter = "WHERE s.city = 'San Francisco'"
+    query = f"""
         SELECT
             d.date,
             p.product_name,
             p.category,
             s.store_name,
+            s.city,
             c.customer_name,
             SUM(f.units_sold) AS units_sold,
             SUM(f.revenue) AS revenue,
@@ -105,7 +123,8 @@ def get_data(db=Depends(get_db)):
         JOIN dim_product p ON f.product_id = p.product_id
         JOIN dim_customer c ON f.customer_id = c.customer_id
         JOIN dim_store s ON f.store_id = s.store_id
-        GROUP BY d.date, p.product_name, p.category, s.store_name, c.customer_name
+        {persona_filter}
+        GROUP BY d.date, p.product_name, p.category, s.store_name, s.city, c.customer_name
         ORDER BY d.date DESC, p.product_name
         LIMIT 100
     """

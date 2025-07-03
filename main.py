@@ -56,6 +56,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 
 class EmailRequest(BaseModel):
     message: str
+    image: Optional[str] = None
 
 @app.post("/api/email_me")
 def email_me(request: EmailRequest, user=Depends(get_current_user)):

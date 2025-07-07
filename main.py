@@ -202,10 +202,48 @@ def get_stores(db=Depends(get_db)):
     json_compatible_data = jsonable_encoder(data)
     return JSONResponse(content=json_compatible_data)
 
+@app.get("/api/ppdata")
+def get_data(user=Depends(get_current_user), db=Depends(get_db)):
+    persona = user.get("persona")
+    cur = db.cursor()
+    persona_filter = ""
+    if persona == "Srini":
+        persona_filter = "WHERE s.state = 'California'"
+    elif persona == "Venkat":
+        persona_filter = "WHERE s.state = 'Nevada'"
+    query = f"""
+        SELECT
+            o.orderDate AS date,
+            p.Name AS product_name,
+            p.Category AS category,
+            s.id AS store_name,
+            s.city,
+            o.customerId AS customer_name,
+            COUNT(oi.SKU) AS units_sold,
+            SUM(p.Price) AS revenue,
+            SUM(p.Price * 0.3) AS profit  -- Assuming 30% profit margin
+        FROM orders o
+        JOIN order_items oi ON o.id = oi.orderID
+        JOIN products p ON oi.SKU = p.SKU
+        JOIN stores s ON o.storeId = s.id
+        JOIN customers c ON o.customerId = c.id  -- Optional if you want to enrich customer info
+        {persona_filter} -- Optional filter placeholder
+        GROUP BY o.orderDate, p.Name, p.Category, s.id, s.city, o.customerId
+        ORDER BY o.orderDate DESC, p.Name
+        LIMIT 100;
+    """
+    cur.execute(query)
+    rows = cur.fetchall()
+    columns = [desc[0] for desc in cur.description]
+    data = [dict(zip(columns, row)) for row in rows]
+    cur.close()
+    json_compatible_data = jsonable_encoder(data)
+    return JSONResponse(content=json_compatible_data)
+
 @app.get("/api/ppproducts")
 def get_products(db=Depends(get_db)):
     cur = db.cursor()
-    cur.execute("SELECT SKU, Name, Category, Size FROM products ORDER BY Name")
+    cur.execute("SELECT SKU AS product_id, Name AS product_name, Category, Size as brand FROM products ORDER BY Name")
     rows = cur.fetchall()
     columns = [desc[0] for desc in cur.description]
     data = [dict(zip(columns, row)) for row in rows]
@@ -216,11 +254,10 @@ def get_products(db=Depends(get_db)):
 @app.get("/api/ppstores")
 def get_stores(db=Depends(get_db)):
     cur = db.cursor()
-    cur.execute("SELECT id, city, state FROM stores ORDER BY id")
+    cur.execute("SELECT id AS store_id, id AS store_name, city, state FROM stores ORDER BY id")
     rows = cur.fetchall()
     columns = [desc[0] for desc in cur.description]
     data = [dict(zip(columns, row)) for row in rows]
     cur.close()
     json_compatible_data = jsonable_encoder(data)
     return JSONResponse(content=json_compatible_data)
-

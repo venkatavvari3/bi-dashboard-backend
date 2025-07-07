@@ -201,3 +201,26 @@ def get_stores(db=Depends(get_db)):
     cur.close()
     json_compatible_data = jsonable_encoder(data)
     return JSONResponse(content=json_compatible_data)
+
+@app.get("/api/ppproducts")
+def get_products(db=Depends(get_db)):
+    cur = db.cursor()
+    cur.execute("SELECT SKU, Name, Category, Size FROM products ORDER BY Name")
+    rows = cur.fetchall()
+    columns = [desc[0] for desc in cur.description]
+    data = [dict(zip(columns, row)) for row in rows]
+    cur.close()
+    json_compatible_data = jsonable_encoder(data)
+    return JSONResponse(content=json_compatible_data)
+
+@app.get("/api/ppstores")
+def get_stores(db=Depends(get_db)):
+    cur = db.cursor()
+    cur.execute("SELECT id, city, state FROM stores ORDER BY id")
+    rows = cur.fetchall()
+    columns = [desc[0] for desc in cur.description]
+    data = [dict(zip(columns, row)) for row in rows]
+    cur.close()
+    json_compatible_data = jsonable_encoder(data)
+    return JSONResponse(content=json_compatible_data)
+

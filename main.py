@@ -17,7 +17,6 @@ from email import encoders
 import base64
 import re
 import requests
-import { saveAs } from 'file-saver';
 
 app = FastAPI()
 
@@ -67,14 +66,15 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 class EmailRequest(BaseModel):
+    to: str
     message: str
     image: Optional[str] = None
 
 @app.post("/api/email_me")
 def email_me(request: EmailRequest, user=Depends(get_current_user)):
-    recipient_email = user.get("sub")
+    recipient_email = request.to
     if not recipient_email or "@" not in recipient_email:
-        raise HTTPException(status_code=400, detail="User email not available.")
+        raise HTTPException(status_code=400, detail="Valid recipient email is required.")
 
     msg = MIMEMultipart()
     msg["Subject"] = "Message from BI Dashboard"

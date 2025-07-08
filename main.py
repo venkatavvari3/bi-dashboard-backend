@@ -229,7 +229,7 @@ def get_data(user=Depends(get_current_user), db=Depends(get_db)):
         JOIN stores s ON o.storeId = s.id
         JOIN customers c ON o.customerId = c.id  -- Optional if you want to enrich customer info
         {persona_filter} -- Optional filter placeholder
-        GROUP BY o.orderDate, p.Name, p.Category, s.id, s.city, o.customerId
+        GROUP BY o.orderDate, p.SKU, p.Name, p.Category, s.id, s.city, o.customerId
         ORDER BY o.orderDate DESC, p.Name
         LIMIT 100;
     """

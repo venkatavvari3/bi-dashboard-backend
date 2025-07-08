@@ -214,6 +214,7 @@ def get_data(user=Depends(get_current_user), db=Depends(get_db)):
     query = f"""
         SELECT
             o.orderDate AS date,
+            p.SKU AS product_id,
             p.Name AS product_name,
             p.Category AS category,
             s.id AS store_name,

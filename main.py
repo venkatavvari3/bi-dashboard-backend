@@ -268,7 +268,7 @@ class ScheduleRequest(BaseModel):
     email: str
 
 @app.post("/api/schedule_report")
-def schedule_report(request: SubscriptionRequest, user=Depends(get_current_user), db=Depends(get_db)):
+def schedule_report(request: ScheduleRequest, user=Depends(get_current_user), db=Depends(get_db)):
     email = user.get("sub")
     cur = db.cursor()
 

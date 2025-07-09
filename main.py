@@ -10,7 +10,6 @@ import jwt
 from typing import Optional
 import smtplib
 from email.mime.text import MIMEText
-from pydantic import BaseModel
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
@@ -262,3 +261,45 @@ def get_stores(db=Depends(get_db)):
     cur.close()
     json_compatible_data = jsonable_encoder(data)
     return JSONResponse(content=json_compatible_data)
+class ScheduleRequest(BaseModel):
+    repeatFrequency: str
+    scheduledTime: str
+    reportFormat: str
+    email: str
+
+@app.post("/api/schedule_report")
+def schedule_report(request: SubscriptionRequest, user=Depends(get_current_user), db=Depends(get_db)):
+    email = user.get("sub")
+    cur = db.cursor()
+
+    # Ensure the subscriptions table exists
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id SERIAL PRIMARY KEY,
+            email TEXT NOT NULL,
+            repeat_frequency TEXT NOT NULL,
+            scheduled_time TEXT NOT NULL,
+            report_format TEXT NOT NULL
+        )
+    """)
+    db.commit()
+
+    # Check if a matching subscription already exists
+    cur.execute("""
+        SELECT 1 FROM subscriptions
+        WHERE email = %s AND repeat_frequency = %s AND scheduled_time = %s AND report_format = %s
+    """, (request.email, request.repeatFrequency, request.scheduledTime, request.reportFormat))
+
+    if cur.fetchone():
+        cur.close()
+        return {"message": "Subscription already exists."}
+
+    # Insert new subscription
+    cur.execute("""
+        INSERT INTO subscriptions (email, repeat_frequency, scheduled_time, report_format)
+        VALUES (%s, %s, %s, %s)
+    """, (request.email, request.repeatFrequency, request.scheduledTime, request.reportFormat))
+    db.commit()
+    cur.close()
+
+    return {"message": "Subscription created successfully."}

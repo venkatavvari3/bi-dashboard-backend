@@ -1,3 +1,6 @@
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 import os
 import psycopg2
 import smtplib
@@ -53,9 +56,9 @@ for email, frequency in subscriptions:
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
                 smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
                 smtp.sendmail(EMAIL_ADDRESS, [email], msg.as_string())
-            print(f"Email sent to {email}")
+            logging.info(f"Email sent to {email}")
         except Exception as e:
-            print(f"Failed to send email to {email}: {e}")
+            logging.error(f"Failed to send email to {email}: {e}")
 
 cur.close()
 conn.close()

@@ -17,10 +17,10 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 # Load environment variables
-DATABASE_URL = os.getenv("DATABASE_URL")
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-SECRET = os.getenv("SECRET", "CHANGE_ME")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+SECRET = os.environ.get("SECRET", "CHANGE_ME")
 
 # Connect to the PostgreSQL database
 conn = psycopg2.connect(DATABASE_URL)

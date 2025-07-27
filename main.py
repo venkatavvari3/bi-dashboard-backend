@@ -24,7 +24,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 origins = [
     "https://bi-dashboard-frontend-git-main-venkatavvari3s-projects.vercel.app",
     "https://bi-dashboard-frontend.vercel.app",
-    "https://bi-dashboard-frontend-venkatavvari3s-projects.vercel.app"
+    "https://bi-dashboard-frontend-venkatavvari3s-projects.vercel.app",
+    "http://localhost:3000"
 ]
 
 app.add_middleware(

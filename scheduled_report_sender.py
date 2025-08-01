@@ -41,6 +41,7 @@ try:
     cur.execute("SELECT email, repeat_frequency FROM subscriptions WHERE scheduled_time = %s", (current_time,))
     #cur.execute("SELECT email, repeat_frequency FROM subscriptions")
     subscriptions = cur.fetchall()
+    logging.info(f"Found {subscriptions} subscriptions")
     logging.info(f"Found {len(subscriptions)} subscriptions scheduled for {current_time}")
 
     # Function to determine if a report should be sent today

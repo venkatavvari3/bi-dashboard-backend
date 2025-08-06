@@ -4,7 +4,6 @@ import logging
 import psycopg2
 import smtplib
 import jwt
-import requests
 import base64
 from datetime import datetime
 from email.mime.text import MIMEText

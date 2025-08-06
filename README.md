@@ -49,13 +49,67 @@ bi-dashboard-backend/
 
 ## 🛠️ Installation
 
-### Prerequisites
+### Option 1: Docker (Recommended)
+
+Docker provides the easiest way to get started with isolated, reproducible environments.
+
+#### Prerequisites
+- Docker
+- Docker Compose
+
+#### Quick Start with Docker
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd bi-dashboard-backend
+
+# Start development environment
+docker-compose --profile dev up --build
+
+# Or use the helper script (Linux/Mac)
+./docker.sh dev
+
+# Or use the PowerShell script (Windows)
+.\docker.ps1 dev
+```
+
+The application will be available at:
+- **API Server**: http://localhost:8000
+- **Interactive Docs**: http://localhost:8000/docs
+- **MailHog (Email Testing)**: http://localhost:8025
+
+#### Docker Helper Scripts
+
+Use the provided scripts for common operations:
+
+**Linux/Mac:**
+```bash
+./docker.sh dev          # Start development
+./docker.sh test         # Run tests
+./docker.sh prod         # Start production
+./docker.sh help         # Show all commands
+```
+
+**Windows:**
+```powershell
+.\docker.ps1 dev         # Start development
+.\docker.ps1 test        # Run tests
+.\docker.ps1 prod        # Start production
+.\docker.ps1 help        # Show all commands
+```
+
+See [DOCKER.md](DOCKER.md) for comprehensive Docker documentation.
+
+### Option 2: Local Python Installation
+
+#### Prerequisites
 
 - Python 3.8+
 - PostgreSQL database
 - Gmail account (for email features)
 
-### Setup
+#### Setup
 
 1. **Clone the repository**
    ```bash
@@ -208,16 +262,62 @@ POST /api/schedule_report
 
 ## 🧪 Testing
 
+This project includes a comprehensive test suite with unit and integration tests.
+
+### Docker Testing (Recommended)
+
+```bash
+# Run all tests in Docker
+./docker.sh test
+
+# Run tests with coverage
+./docker.sh test-coverage
+
+# Windows
+.\docker.ps1 test
+.\docker.ps1 test-coverage
+```
+
+### Local Testing
+
+```bash
+# Install test dependencies
+pip install pytest pytest-asyncio pytest-cov pytest-mock httpx faker
+
+# Run test suite
+python run_tests.py
+
+# Or directly with pytest
+pytest tests/ -v --cov=app --cov-report=html
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py              # Test fixtures and configuration
+├── utils.py                 # Test utilities
+├── unit/                    # Unit tests
+│   ├── test_config.py
+│   ├── test_database.py
+│   ├── test_auth_service.py
+│   ├── test_email_service.py
+│   ├── test_data_service.py
+│   └── test_subscription_service.py
+└── integration/             # Integration tests
+    ├── test_auth_api.py
+    ├── test_data_api.py
+    └── test_email_api.py
+```
+
 ### Manual Testing
+
 ```bash
 # Test individual components
 python -c "from app.services.auth_service import AuthService; print('Auth service OK')"
 python -c "from app.services.data_service import DataService; print('Data service OK')"
 python -c "from app.services.email_service import EmailService; print('Email service OK')"
-```
 
-### API Testing
-```bash
 # Test health endpoint
 curl http://localhost:8000/
 
@@ -241,18 +341,79 @@ All configuration is managed through the `app/core/config.py` file using environ
 
 ## 🚀 Deployment
 
-### Docker (Recommended)
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+### Docker Production Deployment (Recommended)
+
+#### Simple Production Setup
+
+```bash
+# Build and run production container
+docker-compose --profile prod up --build -d
+
+# Or use helper script
+./docker.sh prod          # Linux/Mac
+.\docker.ps1 prod         # Windows
+```
+
+#### Production with Database
+
+```bash
+# Start with PostgreSQL and Redis
+docker-compose --profile prod --profile prod-db up --build -d
+
+# Or use helper script
+./docker.sh prod-db       # Linux/Mac
+.\docker.ps1 prod-db      # Windows
+```
+
+#### Environment Configuration
+
+Create a `.env` file for production:
+
+```env
+# Database
+DATABASE_URL=postgresql://user:password@postgres:5432/bidashboard
+
+# Security
+SECRET_KEY=your-super-secret-key-here
+
+# Email Configuration
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_USERNAME=your-username
+SMTP_PASSWORD=your-password
+SMTP_FROM_EMAIL=noreply@yourdomain.com
+
+# PostgreSQL (for Docker Compose)
+POSTGRES_DB=bidashboard
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=secure-postgres-password
+```
+
+#### Production Features
+
+- **Multi-worker setup**: 4 worker processes for high performance
+- **Health checks**: Automatic container health monitoring
+- **Non-root user**: Enhanced security
+- **Minimal image**: Production-optimized container size
+- **Graceful shutdown**: Proper signal handling
+
+### Manual Docker Deployment
+
+```bash
+# Build production image
+docker build --target production -t bi-dashboard:prod .
+
+# Run production container
+docker run -d \
+  --name bi-dashboard \
+  -p 8000:8000 \
+  -e DATABASE_URL="your-database-url" \
+  -e SECRET_KEY="your-secret-key" \
+  bi-dashboard:prod
 ```
 
 ### Traditional Deployment
+
 ```bash
 # Install production server
 pip install gunicorn
@@ -260,6 +421,30 @@ pip install gunicorn
 # Run with gunicorn
 gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
+
+### Cloud Platform Deployment
+
+The Docker setup is compatible with major cloud platforms:
+
+- **AWS ECS/Fargate**: Use the production image
+- **Google Cloud Run**: Direct deployment from container
+- **Azure Container Instances**: Single-command deployment
+- **DigitalOcean App Platform**: Dockerfile-based deployment
+- **Heroku**: Container registry deployment
+
+### CI/CD Integration
+
+The project includes GitHub Actions for automated testing and deployment:
+
+```yaml
+# .github/workflows/ci.yml included
+# - Runs on Python 3.9, 3.10, 3.11
+# - Comprehensive test suite
+# - Coverage reporting
+# - Architecture validation
+```
+
+See [DOCKER.md](DOCKER.md) for detailed Docker documentation and deployment strategies.
 
 ## 🤝 Development
 

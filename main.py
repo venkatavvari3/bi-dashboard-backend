@@ -68,7 +68,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 class EmailRequest(BaseModel):
     to: str
     message: str
-    image: Optional[str] = None
+    image: Optional[str] = None  # Dashboard chart image with data: prefix
+    pdf: Optional[str] = None    # PDF report as base64
+    excel: Optional[str] = None  # Excel data as base64
 
 @app.post("/api/email_me")
 def email_me(request: EmailRequest, user=Depends(get_current_user)):
@@ -82,6 +84,7 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
     msg["To"] = recipient_email
     msg.attach(MIMEText(request.message, "plain"))
 
+    # Handle image attachment (with data: prefix)
     if request.image:
         match = re.match(r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", request.image)
         if match:
@@ -91,10 +94,34 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
             part = MIMEBase("image", ext)
             part.set_payload(image_data)
             encoders.encode_base64(part)
-            part.add_header("Content-Disposition", f'attachment; filename="image.{ext}"')
+            part.add_header("Content-Disposition", f'attachment; filename="dashboard_chart.{ext}"')
             msg.attach(part)
         else:
             print("Image field is not a valid data URL")
+
+    # Handle PDF attachment (base64 without data: prefix)
+    if request.pdf:
+        try:
+            pdf_data = base64.b64decode(request.pdf)
+            part = MIMEBase("application", "pdf")
+            part.set_payload(pdf_data)
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", 'attachment; filename="dashboard_report.pdf"')
+            msg.attach(part)
+        except Exception as e:
+            print(f"Failed to process PDF attachment: {e}")
+
+    # Handle Excel attachment (base64 without data: prefix)
+    if request.excel:
+        try:
+            excel_data = base64.b64decode(request.excel)
+            part = MIMEBase("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            part.set_payload(excel_data)
+            encoders.encode_base64(part)
+            part.add_header("Content-Disposition", 'attachment; filename="dashboard_data.xlsx"')
+            msg.attach(part)
+        except Exception as e:
+            print(f"Failed to process Excel attachment: {e}")
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
@@ -304,3 +331,5 @@ def schedule_report(request: ScheduleRequest, user=Depends(get_current_user), db
     cur.close()
 
     return {"message": "Subscription created successfully."}
+
+# Updated email functionality to handle multiple attachment types

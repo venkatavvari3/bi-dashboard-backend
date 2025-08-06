@@ -84,6 +84,8 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
     msg["To"] = recipient_email
     msg.attach(MIMEText(request.message, "plain"))
 
+    attachments_count = 0
+
     # Handle image attachment (with data: prefix)
     if request.image:
         match = re.match(r"data:image/(?P<ext>\w+);base64,(?P<data>.+)", request.image)
@@ -96,42 +98,67 @@ def email_me(request: EmailRequest, user=Depends(get_current_user)):
             encoders.encode_base64(part)
             part.add_header("Content-Disposition", f'attachment; filename="dashboard_chart.{ext}"')
             msg.attach(part)
+            attachments_count += 1
+            print(f"Image attachment added successfully: dashboard_chart.{ext}")
         else:
             print("Image field is not a valid data URL")
 
     # Handle PDF attachment (base64 without data: prefix)
     if request.pdf:
         try:
+            # Debug: Check if PDF data exists and its length
+            print(f"PDF data received, length: {len(request.pdf) if request.pdf else 0}")
             pdf_data = base64.b64decode(request.pdf)
-            part = MIMEBase("application", "pdf")
+            print(f"PDF decoded data size: {len(pdf_data)} bytes")
+            
+            part = MIMEBase("application", "octet-stream")
             part.set_payload(pdf_data)
             encoders.encode_base64(part)
-            part.add_header("Content-Disposition", 'attachment; filename="dashboard_report.pdf"')
+            part.add_header(
+                "Content-Disposition",
+                'attachment; filename="dashboard_report.pdf"'
+            )
+            part.add_header("Content-Type", "application/pdf")
             msg.attach(part)
+            attachments_count += 1
+            print("PDF attachment added successfully: dashboard_report.pdf")
         except Exception as e:
             print(f"Failed to process PDF attachment: {e}")
 
     # Handle Excel attachment (base64 without data: prefix)
     if request.excel:
         try:
+            # Debug: Check if Excel data exists and its length
+            print(f"Excel data received, length: {len(request.excel) if request.excel else 0}")
             excel_data = base64.b64decode(request.excel)
-            part = MIMEBase("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            print(f"Excel decoded data size: {len(excel_data)} bytes")
+            
+            part = MIMEBase("application", "octet-stream")
             part.set_payload(excel_data)
             encoders.encode_base64(part)
-            part.add_header("Content-Disposition", 'attachment; filename="dashboard_data.xlsx"')
+            part.add_header(
+                "Content-Disposition",
+                'attachment; filename="dashboard_data.xlsx"'
+            )
+            part.add_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
             msg.attach(part)
+            attachments_count += 1
+            print("Excel attachment added successfully: dashboard_data.xlsx")
         except Exception as e:
             print(f"Failed to process Excel attachment: {e}")
+
+    print(f"Total attachments prepared: {attachments_count}")
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
             smtp.sendmail(EMAIL_ADDRESS, [recipient_email], msg.as_string())
+            print("Email sent successfully with all attachments")
     except Exception as e:
         print(f"Email sending failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to send email.")
 
-    return {"success": True, "message": "Email sent successfully"}
+    return {"success": True, "message": f"Email sent successfully with {attachments_count} attachments"}
 
 class User(BaseModel):
     username: Optional[str] = None

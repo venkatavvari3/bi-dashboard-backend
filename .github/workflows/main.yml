@@ -6,6 +6,11 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: false
+        default: ''
 
 jobs:
   test:
